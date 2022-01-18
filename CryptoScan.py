@@ -231,19 +231,23 @@ class cryptoScan(QtWidgets.QMainWindow):
         return (dfSankeyValue,sankeyLabel)
 
     def showShankey(self,dfSankeyValue,sankeyLabel):
+        colorLabel = len(sankeyLabel) * ["grey"]
+        indexAddress = sankeyLabel.index(self.address.lower()) # Raw data from BscScan returns address in lower case
+        colorLabel[indexAddress] = "red"
         fig = go.Figure(data=[go.Sankey(
             node=dict(
                 pad=15,
                 thickness=10,
                 line=dict(color="black", width=0.5),
                 label=sankeyLabel,
-                color="grey"
+                color=colorLabel
             ),
             link=dict(
                 source=dfSankeyValue['from'].tolist(),  # indices correspond to labels, eg A1, A2, A1, B1, ...
                 target=dfSankeyValue['to'].tolist(),
                 value=dfSankeyValue['value'].tolist()
             ))])
+        fig.update_layout(title_text="Token flow of wallet %s in BscScan" % self.address, font_size=12)
         raw_html = '<html><head><meta charset="utf-8" />'
         raw_html += '<script src="https://cdn.plot.ly/plotly-latest.min.js"></script></head>'
         raw_html += '<body>'
