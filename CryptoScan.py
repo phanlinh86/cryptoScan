@@ -127,6 +127,7 @@ class cryptoScan(QtWidgets.QMainWindow):
         self.textAddress.setGeometry(QtCore.QRect(70, 50, 511, 41))
         self.textAddress.setObjectName("textAddress")
         self.textAddress.setText("Seach by Address / Txn Hash / Block / Token ...")
+        self.textAddress.setAcceptRichText(False)
 
     def setUpLabelStatus(self):
         self.labelStatus = QtWidgets.QLabel(self.centralwidget)
@@ -204,22 +205,23 @@ class cryptoScan(QtWidgets.QMainWindow):
                 + "&startblock=0" \
                 + "&endblock=99999999" \
                 + "&page=1" \
-                + "&offset=10" \
+                + "&offset=10000" \
                 + "&sort=asc" \
                 + "&apikey=" + BSC_API_KEYS
         data    = urllib.request.urlopen(url).read()
-        print(data)
+        pd.set_option('display.expand_frame_repr', False)
+        #print(data)
         res = json.loads(data)
         dfResult = pd.DataFrame(res['result'])
-        print(dfResult)
+        #print(dfResult)
         return dfResult
         # model = DataFrameModel(dfResult)
         # self.tableDisplay.setModel(model)
 
     def processRawBscDataToSankeyFormat(self,dfResult):
         dfSankey = dfResult[['from', 'to', 'value']]
-        dfSankey['value'] = dfSankey['value'].astype(float) / BSC_UNIT
-        print(dfSankey)
+        dfSankey.loc[:,'value'] = dfSankey.loc[:,'value'].astype(float).copy() / BSC_UNIT # Need to put a copy to avoid chain assignment warning
+        #print(dfSankey)
 
         pivotSankey = pd.pivot_table(dfSankey, values='value', index=['from', 'to'], aggfunc=sum)
         dfSankeyValue = pivotSankey.reset_index()
@@ -227,7 +229,7 @@ class cryptoScan(QtWidgets.QMainWindow):
         sankeyIndex = range(0, len(sankeyLabel))
         dictSankeyMap = dict(zip(sankeyLabel, sankeyIndex))
         dfSankeyValue = dfSankeyValue.replace(dictSankeyMap)
-        print(dfSankeyValue)
+        #print(dfSankeyValue)
         return (dfSankeyValue,sankeyLabel)
 
     def showShankey(self,dfSankeyValue,sankeyLabel):
