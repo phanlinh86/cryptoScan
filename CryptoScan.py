@@ -84,15 +84,22 @@ class cryptoScan(QtWidgets.QMainWindow):
         @param None
         """
         super(cryptoScan, self).__init__()
-        self.setupUi()
-        self.connectUi()
-        #self.initializeUi()
-        #self.initializeDatabase()
-        #self.setupTimer()
+        self.initializeUi() # Initialize global variables
+        self.setupUi()      # Set up UI elements
+        self.connectUi()    # Connect UI elements with event functions
+
+        #self.initializeDatabase()  # For future usage
+        #self.setupTimer()          # For future usage
+
+    def initializeUi(self):
+        pd.set_option('mode.chained_assignment', None)
+        self.transLimit = 10
+        self.address = None
 
     def setupUi(self):
         self.setUpCentralWidget()
         self.setUpTextAddress()
+        self.setUpTextTransLimit()
         self.setUpLabelAddress()
         self.setUpMenuBar()
         self.setUpLabelStatus()
@@ -124,10 +131,28 @@ class cryptoScan(QtWidgets.QMainWindow):
 
     def setUpTextAddress(self):
         self.textAddress = QtWidgets.QTextEdit(self.centralwidget)
-        self.textAddress.setGeometry(QtCore.QRect(70, 50, 511, 41))
+        self.textAddress.setGeometry(QtCore.QRect(70, 50, 400, 41))
         self.textAddress.setObjectName("textAddress")
         self.textAddress.setText("Seach by Address / Txn Hash / Block / Token ...")
         self.textAddress.setAcceptRichText(False)
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        font.setBold(False)
+        font.setWeight(75)
+        self.textAddress.setFont(font)
+
+    def setUpTextTransLimit(self):
+        self.textTransLimit = QtWidgets.QTextEdit(self.centralwidget)
+        self.textTransLimit.setGeometry(QtCore.QRect(470, 50, 100, 41))
+        self.textTransLimit.setObjectName("textTransLimit")
+        self.textTransLimit.setText("%d" % self.transLimit)
+        self.textTransLimit.setAcceptRichText(False)
+        self.textTransLimit.setAlignment(QtCore.Qt.AlignCenter)
+        font = QtGui.QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+        font.setWeight(75)
+        self.textTransLimit.setFont(font)
 
     def setUpLabelStatus(self):
         self.labelStatus = QtWidgets.QLabel(self.centralwidget)
@@ -172,22 +197,32 @@ class cryptoScan(QtWidgets.QMainWindow):
     # UI Event related functions ***************************************************************************************
     def connectUi(self):
         self.textAddress.installEventFilter(self)  # Add listener for ticker texbox
+        self.textTransLimit.installEventFilter(self)  # Add listener for ticker texbox
 
     def eventFilter(self, source, event):
-        if event.type() == QtCore.QEvent.MouseButtonPress:# and source is self.textAddress:
-            if event.button() == QtCore.Qt.RightButton:
-                self.textAddressMouseClickEvent()
+        # Do right click on text box to clear data on textbox
+        if event.type() == QtCore.QEvent.MouseButtonPress and event.button() == QtCore.Qt.RightButton:# and source is self.textAddress:
+            if source is self.textAddress:
+                self.textAddress.setText("")
+            if source is self.textTransLimit:
+                self.textTransLimit.setText("")
 
-        if event.type() == QtCore.QEvent.KeyPress and source is self.textAddress:
-            if event.key() in [QtCore.Qt.Key_Return,QtCore.Qt.Key_Enter] and self.textAddress.hasFocus():
-                self.address = self.textAddress.toPlainText().strip()
-                print("Address: %s" % self.address)
-                self.doSearchTransactionByAddress()
+        # After finish editing textbox, update data
+        if event.type() == QtCore.QEvent.KeyPress:
+            if event.key() in [QtCore.Qt.Key_Return,QtCore.Qt.Key_Enter]:
+                if source is self.textAddress:
+                    self.address = self.textAddress.toPlainText().strip()
+                    print("Address: %s" % self.address)
+                    self.doSearchTransactionByAddress()
+                if source is self.textTransLimit:
+                    print("Transaction Limit: %s" % self.transLimit)
+                    textTransLimit = self.textTransLimit.toPlainText().strip()
+                    if textTransLimit.isnumeric():
+                        self.transLimit = int(textTransLimit)
+                    if self.address is not None:
+                        self.doSearchTransactionByAddress()
 
         return super(cryptoScan,self).eventFilter(source, event)
-
-    def textAddressMouseClickEvent(self):
-        self.textAddress.setText("")
 
     def doSearchTransactionByAddress(self):
         try:
@@ -205,7 +240,7 @@ class cryptoScan(QtWidgets.QMainWindow):
                 + "&startblock=0" \
                 + "&endblock=99999999" \
                 + "&page=1" \
-                + "&offset=10000" \
+                + "&offset=" + str(self.transLimit) \
                 + "&sort=asc" \
                 + "&apikey=" + BSC_API_KEYS
         data    = urllib.request.urlopen(url).read()
@@ -221,15 +256,12 @@ class cryptoScan(QtWidgets.QMainWindow):
     def processRawBscDataToSankeyFormat(self,dfResult):
         dfSankey = dfResult[['from', 'to', 'value']]
         dfSankey.loc[:,'value'] = dfSankey.loc[:,'value'].astype(float).copy() / BSC_UNIT # Need to put a copy to avoid chain assignment warning
-        #print(dfSankey)
-
         pivotSankey = pd.pivot_table(dfSankey, values='value', index=['from', 'to'], aggfunc=sum)
         dfSankeyValue = pivotSankey.reset_index()
-        sankeyLabel = pd.unique(dfSankeyValue[['from', 'to']].values.ravel()).tolist()
+        sankeyLabel = pd.unique(dfSankeyValue.loc[:,['from', 'to']].values.ravel()).tolist()
         sankeyIndex = range(0, len(sankeyLabel))
         dictSankeyMap = dict(zip(sankeyLabel, sankeyIndex))
         dfSankeyValue = dfSankeyValue.replace(dictSankeyMap)
-        #print(dfSankeyValue)
         return (dfSankeyValue,sankeyLabel)
 
     def showShankey(self,dfSankeyValue,sankeyLabel):
