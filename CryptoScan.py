@@ -102,6 +102,7 @@ class cryptoScan(QtWidgets.QMainWindow):
         self.setUpTextTransLimit()
         self.setUpLabelAddress()
         self.setUpMenuBar()
+        self.setUpLabelTransLimit()
         self.setUpLabelStatus()
         self.setUpTableDisplay()
         self.setUpfigView()
@@ -140,6 +141,12 @@ class cryptoScan(QtWidgets.QMainWindow):
         font.setBold(False)
         font.setWeight(75)
         self.textAddress.setFont(font)
+
+    def setUpLabelTransLimit(self):
+        self.labelTransLimit = QtWidgets.QLabel(self.centralwidget)
+        self.labelTransLimit.setGeometry(QtCore.QRect(470, 31, 400, 20))
+        self.labelTransLimit.setObjectName("labelTransLimit")
+        self.labelTransLimit.setText("Transaction Limit")
 
     def setUpTextTransLimit(self):
         self.textTransLimit = QtWidgets.QTextEdit(self.centralwidget)
@@ -214,14 +221,15 @@ class cryptoScan(QtWidgets.QMainWindow):
                     self.address = self.textAddress.toPlainText().strip()
                     print("Address: %s" % self.address)
                     self.doSearchTransactionByAddress()
+                    return True
                 if source is self.textTransLimit:
-                    print("Transaction Limit: %s" % self.transLimit)
                     textTransLimit = self.textTransLimit.toPlainText().strip()
                     if textTransLimit.isnumeric():
                         self.transLimit = int(textTransLimit)
                     if self.address is not None:
                         self.doSearchTransactionByAddress()
-
+                    print("Transaction Limit: %s" % self.transLimit)
+                    return True
         return super(cryptoScan,self).eventFilter(source, event)
 
     def doSearchTransactionByAddress(self):
