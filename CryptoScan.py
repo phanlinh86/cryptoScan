@@ -219,6 +219,8 @@ class cryptoScan(QtWidgets.QMainWindow):
     def connectUi(self):
         self.textAddress.installEventFilter(self)  # Add listener for ticker texbox
         self.textTransLimit.installEventFilter(self)  # Add listener for ticker texbox
+        #self.groupBox.toggled.connect(self.groupBoxChangeEvent)
+        self.radioTable.toggled.connect(self.displayOptionToggle)
 
     def eventFilter(self, source, event):
         # Do right click on text box to clear data on textbox
@@ -319,6 +321,22 @@ class cryptoScan(QtWidgets.QMainWindow):
         self.figView.setHtml(raw_html)
         self.figView.show()
         self.figView.raise_()
+
+    def displayOptionToggle(self):
+        if self.cryptoScanData is not None:
+            try:
+                #dfResult = self.getBscTransactionData()
+                dfResult = self.cryptoScanData
+                if self.radioShankey.isChecked():
+                    self.figView.show()
+                    dfSankeyValue, sankeyLabel = self.processRawBscDataToSankeyFormat(dfResult)
+                    self.showShankey(dfSankeyValue,sankeyLabel)
+                if self.radioTable.isChecked():
+                    self.figView.hide()
+                    model = DataFrameModel(dfResult)
+                    self.tableDisplay.setModel(model)
+            except Exception as err:
+                print(err)
 
 
 def main():
