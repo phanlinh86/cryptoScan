@@ -95,6 +95,7 @@ class cryptoScan(QtWidgets.QMainWindow):
         pd.set_option('mode.chained_assignment', None)
         self.transLimit = 10
         self.address = None
+        self.cryptoScanData = None
 
     def setupUi(self):
         self.setUpCentralWidget()
@@ -105,6 +106,7 @@ class cryptoScan(QtWidgets.QMainWindow):
         self.setUpLabelTransLimit()
         self.setUpLabelStatus()
         self.setUpTableDisplay()
+        self.setUpRadioDisplayOption()
         self.setUpfigView()
 
         #self.retranslateUi(MainWindow)
@@ -198,9 +200,21 @@ class cryptoScan(QtWidgets.QMainWindow):
         self.figView = QtWebEngineWidgets.QWebEngineView(self.centralwidget)
         self.figView.setGeometry(QtCore.QRect(70, 100, 500, 700))
 
-    # For table pa
-
-
+    def setUpRadioDisplayOption(self):
+        self.groupBox = QtWidgets.QGroupBox(self.centralwidget)
+        self.groupBox.setGeometry(QtCore.QRect(590, 50, 81, 71))
+        self.groupBox.setObjectName("groupBox")
+        self.radioShankey = QtWidgets.QRadioButton(self.groupBox)
+        self.radioShankey.setGeometry(QtCore.QRect(10, 20, 61, 17))
+        self.radioShankey.setObjectName("radioShankey")
+        self.radioTable = QtWidgets.QRadioButton(self.groupBox)
+        self.radioTable.setGeometry(QtCore.QRect(10, 40, 61, 17))
+        self.radioTable.setObjectName("radioTable")
+        self.groupBox.setTitle("Display")
+        self.radioShankey.setText("Sankey")
+        self.radioTable.setText("Table")
+        self.radioShankey.setChecked(True)
+        self.radioTable.setChecked(False)
     # UI Event related functions ***************************************************************************************
     def connectUi(self):
         self.textAddress.installEventFilter(self)  # Add listener for ticker texbox
@@ -235,8 +249,15 @@ class cryptoScan(QtWidgets.QMainWindow):
     def doSearchTransactionByAddress(self):
         try:
             dfResult = self.getBscTransactionData()
-            dfSankeyValue, sankeyLabel = self.processRawBscDataToSankeyFormat(dfResult)
-            self.showShankey(dfSankeyValue,sankeyLabel)
+            self.cryptoScanData = dfResult
+            if self.radioShankey.isChecked():
+                self.figView.show()
+                dfSankeyValue, sankeyLabel = self.processRawBscDataToSankeyFormat(dfResult)
+                self.showShankey(dfSankeyValue,sankeyLabel)
+            if self.radioTable.isChecked():
+                self.figView.hide()
+                model = DataFrameModel(dfResult)
+                self.tableDisplay.setModel(model)
         except Exception as err:
             print(err)
 
@@ -253,13 +274,9 @@ class cryptoScan(QtWidgets.QMainWindow):
                 + "&apikey=" + BSC_API_KEYS
         data    = urllib.request.urlopen(url).read()
         pd.set_option('display.expand_frame_repr', False)
-        #print(data)
         res = json.loads(data)
         dfResult = pd.DataFrame(res['result'])
-        #print(dfResult)
         return dfResult
-        # model = DataFrameModel(dfResult)
-        # self.tableDisplay.setModel(model)
 
     def processRawBscDataToSankeyFormat(self,dfResult):
         dfSankey = dfResult[['from', 'to', 'value']]
